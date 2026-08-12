@@ -18,7 +18,7 @@ services:
       - key: UPLOAD_CHUNK_BYTES
         value: 2097152
       - key: NODE_OPTIONS
-        value: --require=./groq-shim.js --require=./selection-fix.js --require=./render-http-shim.js --require=./chunk-upload-shim.js
+        value: --require=./groq-shim.js --require=./selection-fix.js --require=./render-http-shim.js --require=./workspace-repair-shim.js --require=./chunk-upload-shim.js
       - key: META_GRAPH_API_VERSION
         value: v24.0
       - key: COOKIE_SECURE
