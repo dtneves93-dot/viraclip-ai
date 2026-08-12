@@ -19,11 +19,11 @@ services:
       - key: VIRACLIP_FFMPEG_PRESET
         value: ultrafast
       - key: VIRACLIP_FFMPEG_CRF
-        value: 27
+        value: 28
       - key: VIRACLIP_FFMPEG_THREADS
         value: 1
       - key: NODE_OPTIONS
-        value: --require=./groq-shim.js --require=./selection-fix.js --require=./render-performance-shim.js --require=./render-http-shim.js --require=./workspace-repair-shim.js --require=./chunk-upload-shim.js
+        value: --require=./groq-shim.js --require=./selection-fix.js --require=./render-performance-shim.js --require=./render-http-shim.js --require=./workspace-repair-shim.js --require=./chunk-upload-shim.js --require=./job-shim.js
       - key: META_GRAPH_API_VERSION
         value: v24.0
       - key: COOKIE_SECURE
