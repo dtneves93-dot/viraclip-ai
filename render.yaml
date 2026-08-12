@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: viraclip-ai-v7
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/status
+    envVars:
+      - key: APP_SECRET
+        generateValue: true
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_TEXT_MODEL
+        value: gpt-5-mini
+      - key: OPENAI_TRANSCRIBE_MODEL
+        value: whisper-1
+      - key: META_GRAPH_API_VERSION
+        value: v24.0
+      - key: COOKIE_SECURE
+        value: true
+      - key: ENABLE_YOUTUBE_IMPORT
+        value: false
