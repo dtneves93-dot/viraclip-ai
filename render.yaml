@@ -7,12 +7,14 @@ services:
     envVars:
       - key: APP_SECRET
         generateValue: true
-      - key: OPENAI_API_KEY
+      - key: GROQ_API_KEY
         sync: false
-      - key: OPENAI_TEXT_MODEL
-        value: gpt-5-mini
-      - key: OPENAI_TRANSCRIBE_MODEL
-        value: whisper-1
+      - key: GROQ_TEXT_MODEL
+        value: openai/gpt-oss-20b
+      - key: GROQ_TRANSCRIBE_MODEL
+        value: whisper-large-v3-turbo
+      - key: NODE_OPTIONS
+        value: --require=./groq-shim.js
       - key: META_GRAPH_API_VERSION
         value: v24.0
       - key: COOKIE_SECURE
