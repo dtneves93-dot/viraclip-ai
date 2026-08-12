@@ -18,6 +18,7 @@ const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 const TEXT_MODEL = process.env.GROQ_TEXT_MODEL || 'openai/gpt-oss-20b';
 const TRANSCRIBE_MODEL = process.env.GROQ_TRANSCRIBE_MODEL || 'whisper-large-v3-turbo';
 const MAX_SELECTION_CHARS = Number(process.env.GROQ_SELECTION_INPUT_CHARS || 16000);
+const RENDER_STALL_MS = Number(process.env.VIRACLIP_RENDER_STALL_MS || 180000);
 
 for (const dir of [DATA_DIR, UPLOAD_DIR, MEDIA_DIR, JOB_DIR]) fs.mkdirSync(dir, { recursive: true });
 const db = new DatabaseSync(DB_PATH);
@@ -47,13 +48,49 @@ function syncRun(bin,args,maxBuffer=32*1024*1024) {
   return r.stdout||'';
 }
 
-function runAsync(bin,args,onStderr) {
+function parseClock(v){
+  const m=String(v||'').trim().match(/^(\d+):(\d+):(\d+(?:\.\d+)?)$/);
+  return m?Number(m[1])*3600+Number(m[2])*60+Number(m[3]):0;
+}
+
+function runFfmpegRender(args,duration,onProgress) {
   return new Promise((resolve,reject)=>{
-    const child=spawn(bin,args,{stdio:['ignore','ignore','pipe']});
-    let err='';
-    child.stderr.on('data',d=>{err+=d.toString(); if(err.length>2_000_000) err=err.slice(-1_000_000); onStderr?.(d.toString());});
-    child.on('error',reject);
-    child.on('close',code=>code===0?resolve():reject(new Error(err.trim()||`${bin} terminou com código ${code}`)));
+    const next=[...args];
+    const logIndex=next.indexOf('-loglevel');
+    if(logIndex>=0&&logIndex+1<next.length)next[logIndex+1]='error';
+    next.splice(2,0,'-progress','pipe:2','-nostats');
+    const child=spawn(FFMPEG,next,{stdio:['ignore','ignore','pipe']});
+    let err='',buf='',lastProgressAt=Date.now(),lastRatio=0,settled=false,watchdogKilled=false;
+    const finish=(error)=>{if(settled)return;settled=true;clearInterval(watchdog);error?reject(error):resolve()};
+    const watchdog=setInterval(()=>{
+      if(Date.now()-lastProgressAt>RENDER_STALL_MS){
+        watchdogKilled=true;
+        try{child.kill('SIGKILL')}catch{}
+      }
+    },10000);
+    child.stderr.on('data',d=>{
+      const text=d.toString();
+      err+=text;if(err.length>1_500_000)err=err.slice(-750_000);
+      buf+=text;
+      let nl;
+      while((nl=buf.indexOf('\n'))>=0){
+        const line=buf.slice(0,nl).trim();buf=buf.slice(nl+1);
+        let seconds=null;
+        if(line.startsWith('out_time_us='))seconds=Number(line.slice(12))/1e6;
+        else if(line.startsWith('out_time_ms='))seconds=Number(line.slice(12))/1e6;
+        else if(line.startsWith('out_time='))seconds=parseClock(line.slice(9));
+        if(Number.isFinite(seconds)&&seconds>=0){
+          const ratio=clamp(seconds/Math.max(1,duration),0,1);
+          if(ratio>=lastRatio){lastRatio=ratio;lastProgressAt=Date.now();onProgress?.(ratio)}
+        }
+      }
+    });
+    child.on('error',e=>finish(e));
+    child.on('close',(code,signal)=>{
+      if(watchdogKilled)return finish(new Error('A renderização ficou sem progresso por 3 minutos e foi interrompida para evitar travamento.'));
+      if(code===0)return finish();
+      finish(new Error((err.trim()||`FFmpeg encerrou com código ${code}${signal?` (${signal})`:''}`).slice(-4000)));
+    });
   });
 }
 
@@ -148,10 +185,15 @@ async function renderClip(source,start,end,id,segments,hook,index,total){
   const duration=Math.max(1,end-start),srt=path.join(os.tmpdir(),`${id}.srt`),out=path.join(MEDIA_DIR,`${id}.mp4`);
   writeSrt(srt,segments,start,end,hook);
   const base=68,indexSpan=28/Math.max(1,total),clipBase=base+index*indexSpan;
-  let lastUpdate=0;
+  let lastWrite=0;
   try{
-    await runAsync(FFMPEG,['-y','-hide_banner','-loglevel','info','-ss',String(start),'-t',String(duration),'-i',source,'-vf',subtitleFilter(srt),'-map','0:v:0','-map','0:a?','-c:v','libx264','-preset',process.env.VIRACLIP_FFMPEG_PRESET||'ultrafast','-crf',process.env.VIRACLIP_FFMPEG_CRF||'28','-threads',process.env.VIRACLIP_FFMPEG_THREADS||'1','-c:a','aac','-b:a','96k','-movflags','+faststart',out],()=>{
-      const t=Date.now(); if(t-lastUpdate>2000){lastUpdate=t;writeJob({stage:'rendering',percent:Math.min(96,Math.round(clipBase+indexSpan*.45)),message:`Renderizando clipe ${index+1}/${total}`});}
+    await runFfmpegRender(['-y','-hide_banner','-loglevel','error','-ss',String(start),'-t',String(duration),'-i',source,'-vf',subtitleFilter(srt),'-filter_threads','1','-map','0:v:0','-map','0:a?','-c:v','libx264','-preset',process.env.VIRACLIP_FFMPEG_PRESET||'ultrafast','-crf',process.env.VIRACLIP_FFMPEG_CRF||'28','-threads',process.env.VIRACLIP_FFMPEG_THREADS||'1','-pix_fmt','yuv420p','-c:a','aac','-b:a','96k','-movflags','+faststart',out],duration,ratio=>{
+      const t=Date.now();
+      if(t-lastWrite>900||ratio>=0.999){
+        lastWrite=t;
+        const percent=Math.min(96,Math.round(clipBase+indexSpan*ratio));
+        writeJob({stage:'rendering',percent,message:`Renderizando clipe ${index+1}/${total} • ${Math.round(ratio*100)}% do clipe`});
+      }
     });
   } finally { fs.rmSync(srt,{force:true}); }
   return `/media/${path.basename(out)}`;
@@ -177,7 +219,7 @@ function saveProject(workspaceId,p){
     const items=[];
     for(let i=0;i<cuts.length;i++){
       const c=cuts[i],id=uid('clip');
-      writeJob({stage:'rendering',percent:68+Math.round(i*(28/Math.max(1,cuts.length))),message:`Renderizando clipe ${i+1}/${cuts.length}`});
+      writeJob({stage:'rendering',percent:68+Math.round(i*(28/Math.max(1,cuts.length))),message:`Renderizando clipe ${i+1}/${cuts.length} • 0% do clipe`});
       const videoUrl=await renderClip(source,c.start,c.end,id,transcript.segments,c.hook||c.title,i,cuts.length);
       const script=transcript.segments.filter(s=>s.end>=c.start&&s.start<=c.end).map(s=>s.text).join(' ')||c.hook||c.title;
       items.push(saveProject(input.workspaceId,{id,idea:c.title||`Clipe ${i+1}`,hook:c.hook||c.title,script,caption:c.caption||'',hashtags:c.hashtags||'',duration:c.end-c.start,videoUrl,viralScore:c.score,reason:c.reason,clipStart:c.start,clipEnd:c.end,sourceId:input.sourceId}));
