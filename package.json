@@ -1,0 +1,8 @@
+{
+  "name": "viraclip-ai",
+  "version": "7.0.0",
+  "private": true,
+  "description": "ViraClip AI v7 - transforma vídeos longos em vários clipes verticais legendados e prontos para Instagram.",
+  "scripts": {"start":"node server.js"},
+  "engines": {"node": ">=22.5.0"}
+}
