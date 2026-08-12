@@ -14,6 +14,12 @@ services:
         value: whisper-large-v3-turbo
       - key: GROQ_SELECTION_INPUT_CHARS
         value: 16000
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
       - key: UPLOAD_CHUNK_BYTES
         value: 2097152
       - key: VIRACLIP_FFMPEG_PRESET
@@ -23,7 +29,7 @@ services:
       - key: VIRACLIP_FFMPEG_THREADS
         value: 1
       - key: NODE_OPTIONS
-        value: --require=./groq-shim.js --require=./selection-fix.js --require=./render-performance-shim.js --require=./render-http-shim.js --require=./workspace-repair-shim.js --require=./chunk-upload-shim.js --require=./client-version-shim.js --require=./worker-launch-shim.js --require=./job-shim.js --require=./client-network-shim.js
+        value: --require=./groq-shim.js --require=./selection-fix.js --require=./render-performance-shim.js --require=./render-http-shim.js --require=./workspace-repair-shim.js --require=./chunk-upload-shim.js --require=./client-version-shim.js --require=./worker-launch-shim.js --require=./cloud-worker-launch-shim.js --require=./job-shim.js --require=./client-network-shim.js --require=./cloudinary-shim.js
       - key: META_GRAPH_API_VERSION
         value: v24.0
       - key: COOKIE_SECURE
