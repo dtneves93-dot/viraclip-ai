@@ -13,8 +13,10 @@ services:
         value: openai/gpt-oss-20b
       - key: GROQ_TRANSCRIBE_MODEL
         value: whisper-large-v3-turbo
+      - key: GROQ_SELECTION_INPUT_CHARS
+        value: 16000
       - key: NODE_OPTIONS
-        value: --require=./groq-shim.js --require=./render-http-shim.js
+        value: --require=./groq-shim.js --require=./selection-fix.js --require=./render-http-shim.js
       - key: META_GRAPH_API_VERSION
         value: v24.0
       - key: COOKIE_SECURE
