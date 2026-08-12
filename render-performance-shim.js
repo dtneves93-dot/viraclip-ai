@@ -4,6 +4,8 @@
 // The main server imports spawnSync from child_process during startup, so this
 // preload replaces spawnSync before server.js captures it.
 const childProcess = require('child_process');
+const fs = require('fs');
+const path = require('path');
 const originalSpawnSync = childProcess.spawnSync;
 
 function replaceArg(args, flag, value) {
@@ -43,3 +45,29 @@ childProcess.spawnSync = function viraClipFastSpawnSync(command, args = [], opti
   }
   return originalSpawnSync.call(childProcess, command, args, options);
 };
+
+// Make the browser explain that render is still working instead of looking frozen.
+try {
+  const appPath = path.join(__dirname, 'app.js');
+  const marker = '/* ViraClip render activity v1 */';
+  let app = fs.readFileSync(appPath, 'utf8');
+  if (!app.includes(marker)) {
+    app += `\n\n${marker}\n
+const __vcOriginalProgress = progress;
+let __vcRenderStartedAt = 0;
+progress = function(percent,title,text,done=0){
+  if(String(title||'').toLowerCase().includes('renderizando')){
+    if(!__vcRenderStartedAt) __vcRenderStartedAt = Date.now();
+    const sec = Math.max(0,Math.floor((Date.now()-__vcRenderStartedAt)/1000));
+    const min = Math.floor(sec/60), rem = sec%60;
+    text = 'Renderização em andamento • '+(min?min+'m ':'')+rem+'s • não feche esta tela';
+  } else if(Number(percent)>=100 || Number(percent)===0){
+    __vcRenderStartedAt = 0;
+  }
+  return __vcOriginalProgress(percent,title,text,done);
+};\n`;
+    fs.writeFileSync(appPath, app, 'utf8');
+  }
+} catch (e) {
+  console.warn('Render activity patch not applied:', e.message);
+}
