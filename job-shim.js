@@ -20,7 +20,21 @@ function readJson(req,limit=128*1024){return new Promise((resolve,reject)=>{let 
 function auth(req){const sid=parseCookies(req).viraclip_session;if(!sid)return null;const session=db.prepare('SELECT user_id FROM sessions WHERE id=? AND expires_at>?').get(sid,now());if(!session)return null;let workspaceId=String(req.headers['x-workspace-id']||'');let ok=workspaceId&&db.prepare('SELECT 1 x FROM memberships WHERE user_id=? AND workspace_id=?').get(session.user_id,workspaceId);if(!ok){const row=db.prepare('SELECT workspace_id FROM memberships WHERE user_id=? LIMIT 1').get(session.user_id);workspaceId=row?.workspace_id||''}return workspaceId?{userId:session.user_id,workspaceId}:null}
 function jobFile(id){return path.join(JOB_DIR,`${id}.json`)}
 function inputFile(id){return path.join(JOB_DIR,`${id}.input.json`)}
-function startWorker(id){const env={...process.env,NODE_OPTIONS:''};const child=spawn(process.execPath,[path.join(__dirname,'clip-worker.js'),id],{cwd:__dirname,env,detached:false,stdio:['ignore','inherit','inherit']});child.unref()}
+function markWorkerExit(id,code,signal){
+  const file=jobFile(id);if(!fs.existsSync(file))return;
+  try{
+    const j=JSON.parse(fs.readFileSync(file,'utf8'));
+    if(j.status==='done'||j.status==='failed')return;
+    const next={...j,status:'failed',stage:'failed',percent:Number(j.percent||0),message:`Worker de vídeo encerrou inesperadamente${signal?` (${signal})`:''}.`,error:`O processo de renderização terminou antes de concluir${code!==null?` (código ${code})`:''}${signal?` — sinal ${signal}`:''}.`,finishedAt:now(),updatedAt:now()};
+    const tmp=`${file}.tmp`;fs.writeFileSync(tmp,JSON.stringify(next),'utf8');fs.renameSync(tmp,file);
+  }catch(e){console.warn('Worker exit state:',e.message)}
+}
+function startWorker(id){
+  const env={...process.env,NODE_OPTIONS:''};
+  const child=spawn(process.execPath,[path.join(__dirname,'clip-worker.js'),id],{cwd:__dirname,env,detached:false,stdio:['ignore','inherit','inherit']});
+  child.on('error',()=>markWorkerExit(id,null,'spawn-error'));
+  child.on('exit',(code,signal)=>{if(code!==0||signal)markWorkerExit(id,code,signal)});
+}
 
 async function handle(req,res){
   const pathname=new URL(req.url,'http://localhost').pathname;
@@ -55,8 +69,6 @@ try{
     app+=`\n\n${marker}\n
 async function __vcWaitJob(jobId){const started=Date.now();for(;;){await new Promise(r=>setTimeout(r,2000));const j=await api('/api/clip-job/'+encodeURIComponent(jobId));const elapsed=Math.floor((Date.now()-started)/1000),min=Math.floor(elapsed/60),sec=String(elapsed%60).padStart(2,'0');const pct=Number(j.percent||25);progress(pct,j.stage==='transcribing'?'Transcrevendo o vídeo…':j.stage==='selecting'?'Selecionando os melhores momentos…':j.stage==='rendering'?'Renderizando os clipes…':j.stage==='done'?'Clipes prontos!':'Processando…',(j.message||'Processando')+' • '+min+'m '+sec+'s',j.stage==='transcribing'?1:j.stage==='selecting'?2:j.stage==='rendering'?3:j.stage==='done'?4:1);if(j.status==='done')return j;if(j.status==='failed')throw new Error(j.error||j.message||'Falha no processamento');if(elapsed>45*60)throw new Error('O processamento demorou mais que o esperado.')}}
 processVideo=async function(){const btn=$('#processBtn');setBusy(btn,true,'Processando…','✦ Criar clipes automaticamente');try{let src;if(state.sourceMode==='upload'){const f=$('#videoFile').files?.[0];if(!f)throw new Error('Escolha um vídeo primeiro');src=await uploadSource(f);src.sourceTitle=f.name}else src=await importYoutube();state.source=src;progress(25,'Processamento iniciado','Preparando transcrição e seleção dos cortes.',1);const start=await api('/api/clip-job',{method:'POST',body:JSON.stringify({sourceId:src.sourceId,sourceTitle:src.sourceTitle||'',sourceUrl:src.sourceUrl||'',count:Number($('#clipCount').value),minDuration:Number($('#minDuration').value),maxDuration:Number($('#maxDuration').value),goal:$('#clipGoal').value})});const d=await __vcWaitJob(start.jobId);progress(100,'Clipes prontos!','Selecione um corte para baixar, publicar ou agendar.',4);renderClipResults(d.items||[]);await loadProjects();toast((d.items?.length||0)+' clipes criados ✓');}catch(e){toast(e.message);progress(0,'Não foi possível processar',e.message,0)}finally{setBusy(btn,false,'Processando…','✦ Criar clipes automaticamente')}};
-// Important: app.js bound the old function to onclick before this override ran.
-// Rebind the button now so the browser actually uses the async job pipeline.
 const __vcProcessBtn=$('#processBtn');if(__vcProcessBtn){__vcProcessBtn.onclick=processVideo;__vcProcessBtn.dataset.pipeline='async-v6';}
 window.__VIRACLIP_PIPELINE='async-v6';\n`;
     fs.writeFileSync(appPath,app,'utf8');
