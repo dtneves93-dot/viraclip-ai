@@ -3,7 +3,6 @@ services:
     name: viraclip-ai-v7
     runtime: docker
     plan: free
-    healthCheckPath: /api/status
     envVars:
       - key: APP_SECRET
         generateValue: true
@@ -17,8 +16,14 @@ services:
         value: 16000
       - key: UPLOAD_CHUNK_BYTES
         value: 2097152
+      - key: VIRACLIP_FFMPEG_PRESET
+        value: ultrafast
+      - key: VIRACLIP_FFMPEG_CRF
+        value: 27
+      - key: VIRACLIP_FFMPEG_THREADS
+        value: 1
       - key: NODE_OPTIONS
-        value: --require=./groq-shim.js --require=./selection-fix.js --require=./render-http-shim.js --require=./workspace-repair-shim.js --require=./chunk-upload-shim.js
+        value: --require=./groq-shim.js --require=./selection-fix.js --require=./render-performance-shim.js --require=./render-http-shim.js --require=./workspace-repair-shim.js --require=./chunk-upload-shim.js
       - key: META_GRAPH_API_VERSION
         value: v24.0
       - key: COOKIE_SECURE
