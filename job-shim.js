@@ -31,7 +31,7 @@ function markWorkerExit(id,code,signal){
 }
 function startWorker(id){
   const env={...process.env,NODE_OPTIONS:''};
-  const child=spawn(process.execPath,[path.join(__dirname,'clip-worker.js'),id],{cwd:__dirname,env,detached:false,stdio:['ignore','inherit','inherit']});
+  const child=spawn(process.execPath,[path.join(__dirname,'clip-worker-v2.js'),id],{cwd:__dirname,env,detached:false,stdio:['ignore','inherit','inherit']});
   child.on('error',()=>markWorkerExit(id,null,'spawn-error'));
   child.on('exit',(code,signal)=>{if(code!==0||signal)markWorkerExit(id,code,signal)});
 }
