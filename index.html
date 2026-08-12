@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#08080d" />
+  <title>ViraClip AI v7</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<section class="auth-screen" id="authScreen">
+  <div class="auth-brand"><div class="logo">V</div><div><b>ViraClip AI</b><span>long video → viral clips</span></div></div>
+  <div class="auth-card">
+    <p class="eyebrow">VIRACLIP AI v7</p>
+    <h1>Um vídeo longo. Vários Reels prontos.</h1>
+    <p class="muted">Envie um vídeo, deixe a IA encontrar os melhores momentos, gerar legendas e transformar tudo em cortes verticais.</p>
+    <div class="auth-tabs"><button class="active" data-auth-tab="login">Entrar</button><button data-auth-tab="register">Criar conta</button></div>
+    <form id="loginForm" class="auth-form">
+      <label>E-mail</label><input id="loginEmail" type="email" required placeholder="voce@email.com" />
+      <label>Senha</label><input id="loginPassword" type="password" required placeholder="••••••••" />
+      <button class="primary wide" type="submit">Entrar</button>
+    </form>
+    <form id="registerForm" class="auth-form hidden">
+      <label>Seu nome</label><input id="registerName" required placeholder="Seu nome" />
+      <label>E-mail</label><input id="registerEmail" type="email" required placeholder="voce@email.com" />
+      <label>Senha</label><input id="registerPassword" type="password" minlength="8" required placeholder="Mínimo 8 caracteres" />
+      <label>Nome do perfil/cliente</label><input id="registerWorkspace" required placeholder="Meu perfil" />
+      <button class="primary wide" type="submit">Criar conta</button>
+    </form>
+    <p class="auth-error" id="authError"></p>
+  </div>
+</section>
+
+<div class="app hidden" id="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo">V</div><div><b>ViraClip AI</b><span>clip engine • v7</span></div></div>
+    <div class="workspace-box"><label>Perfil / cliente</label><div class="workspace-row"><select id="workspaceSelect"></select><button id="addWorkspaceBtn">+</button></div></div>
+    <nav>
+      <button class="nav active" data-view="studio"><span>✂</span> Recortar vídeo</button>
+      <button class="nav" data-view="projects"><span>▦</span> Meus clipes</button>
+      <button class="nav" data-view="calendar"><span>◷</span> Calendário</button>
+      <button class="nav" data-view="analytics"><span>◉</span> Analytics</button>
+      <button class="nav" data-view="settings"><span>⚙</span> Integrações</button>
+    </nav>
+    <div class="connection-card"><div class="dot" id="connectionDot"></div><div><b id="connectionTitle">Verificando</b><p id="connectionText">IA + FFmpeg + Instagram</p></div></div>
+    <div class="user-card"><div><b id="userName">Usuário</b><p id="userEmail"></p></div><button id="logoutBtn">Sair</button></div>
+  </aside>
+
+  <main>
+    <header class="topbar"><div><p class="eyebrow">VIRACLIP AI v7</p><h1 id="viewTitle">Recortador inteligente</h1></div><div class="top-actions"><span class="workspace-pill" id="workspacePill">—</span><button class="ghost" id="newProjectBtn">+ Novo vídeo</button></div></header>
+
+    <section class="view active" id="view-studio">
+      <div class="hero-strip">
+        <div><span class="live-dot"></span><b>Fluxo automático</b><p>Vídeo longo → transcrição → melhores momentos → 9:16 → legendas → Reels.</p></div>
+        <div class="hero-stat"><b id="statusAi">IA</b><span>seleção dos cortes</span></div>
+        <div class="hero-stat"><b id="statusFfmpeg">FFmpeg</b><span>renderização</span></div>
+      </div>
+
+      <div class="source-grid">
+        <article class="panel source-panel">
+          <div class="panel-head"><span class="step">1</span><div><h2>Adicione o vídeo</h2><p>Upload é o modo principal. Link do YouTube pode ser habilitado para conteúdo autorizado.</p></div></div>
+          <div class="source-tabs"><button class="active" data-source-tab="upload">Upload</button><button data-source-tab="youtube">YouTube</button></div>
+          <div id="sourceUploadPane">
+            <label class="dropzone" for="videoFile">
+              <input id="videoFile" type="file" accept="video/*,.mkv,.avi" />
+              <div class="drop-icon">↑</div><b>Toque para escolher um vídeo</b><span>MP4, MOV, WebM, MKV ou AVI • até 3 GB</span>
+            </label>
+            <div class="file-row hidden" id="fileRow"><div><b id="fileName">video.mp4</b><span id="fileMeta"></span></div><button class="ghost" id="clearFileBtn">Trocar</button></div>
+          </div>
+          <div id="sourceYoutubePane" class="hidden">
+            <label>Link do YouTube</label><input id="youtubeUrl" placeholder="https://www.youtube.com/watch?v=..." />
+            <label class="check"><input type="checkbox" id="rightsConfirmed" /> Tenho autorização para reutilizar este vídeo.</label>
+            <p class="micro">Para um produto comercial, mantenha essa importação restrita a conteúdo próprio/autorizado.</p>
+          </div>
+        </article>
+
+        <article class="panel options-panel">
+          <div class="panel-head"><span class="step">2</span><div><h2>Como cortar</h2><p>A IA usa a fala e o contexto para escolher os trechos.</p></div></div>
+          <label>Quantidade de clipes</label><select id="clipCount"><option value="3">3 clipes</option><option value="5" selected>5 clipes</option><option value="8">8 clipes</option><option value="10">10 clipes</option></select>
+          <div class="two"><div><label>Duração mínima</label><select id="minDuration"><option value="15">15s</option><option value="20" selected>20s</option><option value="30">30s</option></select></div><div><label>Duração máxima</label><select id="maxDuration"><option value="45">45s</option><option value="60" selected>60s</option><option value="90">90s</option></select></div></div>
+          <label>Objetivo</label><select id="clipGoal"><option>Maior retenção</option><option>Mais compartilhamentos</option><option>Mais comentários</option><option>Conteúdo educativo</option><option>Momentos engraçados</option></select>
+          <button class="primary wide big" id="processBtn">✦ Criar clipes automaticamente</button>
+        </article>
+      </div>
+
+      <article class="panel progress-panel hidden" id="progressPanel">
+        <div class="progress-head"><div><p class="eyebrow">PROCESSANDO</p><h2 id="progressTitle">Preparando o vídeo…</h2></div><b id="progressPct">0%</b></div>
+        <div class="progress-track"><div id="progressBar"></div></div>
+        <div class="progress-steps"><span id="pUpload">1. Upload</span><span id="pTranscribe">2. Transcrição</span><span id="pSelect">3. Seleção IA</span><span id="pRender">4. Render + legendas</span></div>
+        <p class="micro" id="progressText">Não feche esta tela enquanto o vídeo estiver sendo processado.</p>
+      </article>
+
+      <section class="results-section hidden" id="resultsSection">
+        <div class="section-toolbar"><div><p class="eyebrow">RESULTADO</p><h2 id="resultsTitle">Clipes encontrados</h2><p>Ordenados pelo potencial estimado de retenção.</p></div><button class="secondary" id="refreshProjectsBtnInline">Atualizar biblioteca</button></div>
+        <div class="clip-grid" id="clipGrid"></div>
+      </section>
+
+      <div class="lower-grid">
+        <article class="panel publish-panel"><div class="panel-head small"><div><h2>Publicar no Instagram</h2><p>Escolha um clipe acima e publique agora ou agende.</p></div></div><div class="publish-card"><div class="current-video" id="currentVideo">Nenhum clipe selecionado.</div><label>Legenda</label><textarea id="publishCaption" rows="4" placeholder="Legenda do Reel"></textarea><label>Data e hora</label><input type="datetime-local" id="publishAt" /><label class="check"><input type="checkbox" id="shareToFeed" checked /> Compartilhar também no feed</label><div class="two-buttons"><button class="secondary" id="scheduleBtn">◷ Agendar</button><button class="primary compact" id="publishBtn">↗ Publicar agora</button></div></div></article>
+        <article class="panel"><div class="panel-head small"><div><h2>Aprendizado da IA</h2><p>Depois de publicar, o ViraClip compara quais cortes performam melhor.</p></div></div><div id="strategyCard" class="strategy-card"><b>Ainda sem dados.</b><p>Publique clipes e atualize os analytics.</p></div></article>
+      </div>
+    </section>
+
+    <section class="view" id="view-projects"><div class="section-toolbar"><div><h2>Meus clipes</h2><p>Todos os cortes renderizados deste perfil.</p></div><button class="secondary" id="refreshProjectsBtn">Atualizar</button></div><div class="clip-grid" id="projectGrid"></div></section>
+
+    <section class="view" id="view-calendar"><div class="section-toolbar"><div><h2>Calendário</h2><p>Próximas publicações agendadas.</p></div><button class="secondary" id="refreshCalendarBtn">Atualizar</button></div><div class="calendar-grid" id="calendarGrid"></div><h3 class="subhead">Fila de publicação</h3><div class="cards-grid compact-grid" id="scheduleGrid"></div></section>
+
+    <section class="view" id="view-analytics"><div class="section-toolbar"><div><h2>Analytics + aprendizado</h2><p>O ViraClip aprende com alcance, interação e retenção.</p></div><div class="toolbar-actions"><button class="secondary" id="demoAnalyticsBtn">Dados demo</button><button class="primary compact" id="refreshAnalyticsBtn">Atualizar Instagram</button></div></div><div class="kpis"><div><span>Visualizações</span><b id="kpiViews">0</b></div><div><span>Alcance</span><b id="kpiReach">0</b></div><div><span>Interações</span><b id="kpiInteractions">0</b></div><div><span>Taxa</span><b id="kpiEngagement">0%</b></div></div><div class="analytics-grid"><article class="panel"><h3>Ranking de clipes</h3><div id="analyticsTable" class="analytics-table"></div></article><article class="panel"><h3>Próxima estratégia</h3><div id="analyticsStrategy" class="strategy-card"></div><button class="secondary wide" id="rebuildStrategyBtn">Recalcular estratégia</button></article></div></section>
+
+    <section class="view" id="view-settings"><div class="settings-grid"><article class="panel"><p class="eyebrow">INSTAGRAM</p><h2>Conectar perfil</h2><p class="muted">Necessário para publicar e agendar Reels.</p><label>ID da conta profissional</label><input id="igAccountId" placeholder="Instagram Account ID" /><label>Access token</label><input id="igToken" type="password" placeholder="Cole um novo token para substituir" /><label>Graph API version</label><input id="igGraphVersion" placeholder="v24.0" /><label>URL pública do ViraClip</label><input id="publicBaseUrl" placeholder="https://seu-dominio.com" /><button class="primary wide" id="saveInstagramBtn">Salvar integração</button><p class="micro" id="igIntegrationState"></p></article><article class="panel"><p class="eyebrow">NOVO PERFIL</p><h2>Adicionar cliente</h2><p class="muted">Cada perfil mantém clipes, calendário, integração e analytics separados.</p><label>Nome</label><input id="newWorkspaceName" placeholder="Ex.: Canal Cortes" /><button class="secondary wide" id="createWorkspaceBtn">+ Criar perfil</button><div class="divider"></div><p class="eyebrow">PIPELINE v7</p><ul class="tech-list"><li>Upload de vídeo longo</li><li>Transcrição com timestamps</li><li>Seleção de cortes por IA</li><li>Crop automático 9:16</li><li>Legendas queimadas no MP4</li><li>Publicação/agendamento no Instagram</li></ul></article></div></section>
+  </main>
+</div>
+<div id="toast" class="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>
